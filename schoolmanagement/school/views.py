@@ -6,7 +6,13 @@ from .serializers import PersonDataSerializer
 from .models import TPersonData
 from django.http import HttpRequest, HttpResponse
 from django.db.models.query import QuerySet
-from school.utils.constants import LOGGER_NAME
+from school.utils.constants import (
+    LOGGER_NAME,
+    FETCHING_ALL_DATA_START,
+    FETCHING_DATA_USING_ID_START,
+    FETCHING_DATA_SUCCESS,
+    UNEXPECTED_EXCEPTION,
+)
 
 logger = logging.getLogger(LOGGER_NAME)
 
@@ -25,7 +31,9 @@ class PersonDataDetailView(views.APIView):
             Queryset: Retruting the queryset object
         """
         try:
-            return TPersonData.objects.get(pk=pk, delete_status=False)
+            return TPersonData.objects.filter(
+                pk=pk, delete_status=False
+            ).first()
         except TPersonData.DoesNotExist:
             raise Http404
 
@@ -40,19 +48,21 @@ class PersonDataDetailView(views.APIView):
         """
         try:
             if not pk:
-                logger.info("Featching All data!")
+                logger.info(FETCHING_ALL_DATA_START)
                 person_data = TPersonData.objects.filter(delete_status=False)
                 serializer = PersonDataSerializer(person_data, many=True)
             else:
-                logger.info(f"Featching data for {pk}!")
+                logger.info(FETCHING_DATA_USING_ID_START % pk)
                 person_data = self.get_object(pk)
-                serializer = PersonDataSerializer(person_data)
-            logger.info("Featching data process completed!")
+                if person_data:
+                    serializer = PersonDataSerializer(person_data)
+            logger.info(FETCHING_DATA_SUCCESS)
             return Response(serializer.data)
         except Exception as error:
-            logger.error(f"{error}")
+            logger.error(UNEXPECTED_EXCEPTION % error)
             return Response(
-                serializer.errors, status=status.HTTP_400_BAD_REQUEST
+                'Data not Found!',
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
     def post(self, request: HttpRequest) -> HttpResponse:
@@ -79,9 +89,10 @@ class PersonDataDetailView(views.APIView):
             else:
                 raise Exception
         except Exception as error:
-            logger.error(f"{error}")
+            logger.error(UNEXPECTED_EXCEPTION % error)
             return Response(
-                serializer.errors, status=status.HTTP_400_BAD_REQUEST
+                UNEXPECTED_EXCEPTION % error,
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
     def put(self, request: HttpRequest, pk: int = None) -> HttpResponse:
@@ -111,9 +122,10 @@ class PersonDataDetailView(views.APIView):
             else:
                 raise Http404
         except Exception as error:
-            logger.error(f"{error}")
+            logger.error(UNEXPECTED_EXCEPTION % error)
             return Response(
-                serializer.errors, status=status.HTTP_400_BAD_REQUEST
+                UNEXPECTED_EXCEPTION % error,
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
     def delete(self, request: HttpRequest, pk: int = None) -> HttpResponse:
@@ -132,19 +144,23 @@ class PersonDataDetailView(views.APIView):
             if pk:
                 logger.info(f"Delete record for {pk}!")
                 person_data = self.get_object(pk)
-                if not person_data.delete_status:
-                    person_data.delete_status = True
-                    person_data.save()
-                    logger.info("Data deleted Successfully")
-                    return Response(
-                        f" Successfully recored deleted for {pk}",
-                        status=status.HTTP_200_OK,
-                    )
-            else:
-                raise Http404
+                if person_data:
+                    if not person_data.delete_status:
+                        person_data.delete_status = True
+                        person_data.save()
+                        logger.info("Data deleted Successfully")
+                        return Response(
+                            f" Successfully recored deleted for {pk}",
+                            status=status.HTTP_200_OK,
+                        )
+                else:
+                    raise Exception
         except Exception as error:
-            logger.error(f"{error}")
-            return Response(error, status=status.HTTP_400_BAD_REQUEST)
+            logger.error(UNEXPECTED_EXCEPTION % error)
+            return Response(
+                'Data not found!',
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
 
 # class InfoListView(views.APIView):
