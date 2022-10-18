@@ -12,9 +12,16 @@ from school.utils.constants import (
     FETCHING_DATA_USING_ID_START,
     FETCHING_DATA_SUCCESS,
     UNEXPECTED_EXCEPTION,
+    DATA_NOT_FOUND,
 )
 
 logger = logging.getLogger(LOGGER_NAME)
+
+
+class DataNotFoundException(Exception):
+    def __init__(self, message):
+        # Call the base class constructor with the parameters it needs
+        super().__init__(message)
 
 
 class PersonDataDetailView(views.APIView):
@@ -61,8 +68,8 @@ class PersonDataDetailView(views.APIView):
         except Exception as error:
             logger.error(UNEXPECTED_EXCEPTION % error)
             return Response(
-                'Data not Found!',
-                status=status.HTTP_400_BAD_REQUEST,
+                DATA_NOT_FOUND,
+                status=status.HTTP_404_NOT_FOUND,
             )
 
     def post(self, request: HttpRequest) -> HttpResponse:
@@ -87,7 +94,7 @@ class PersonDataDetailView(views.APIView):
                     serializer.data, status=status.HTTP_201_CREATED
                 )
             else:
-                raise Exception
+                raise Exception(serializer.errors)
         except Exception as error:
             logger.error(UNEXPECTED_EXCEPTION % error)
             return Response(
@@ -112,15 +119,24 @@ class PersonDataDetailView(views.APIView):
             if pk:
                 logger.info(f"Updating data for {pk}!")
                 person_data = self.get_object(pk)
-                serializer = PersonDataSerializer(
-                    person_data, data=request.data
-                )
-                if serializer.is_valid():
-                    serializer.save()
-                    logger.info("Updating data process completed!")
-                    return Response(serializer.data)
+                if person_data:
+                    serializer = PersonDataSerializer(
+                        person_data, data=request.data
+                    )
+                    if serializer.is_valid():
+                        serializer.save()
+                        logger.info("Updating data process completed!")
+                        return Response(serializer.data)
+                else:
+                    raise DataNotFoundException(DATA_NOT_FOUND)
             else:
                 raise Http404
+        except DataNotFoundException as error:
+            logger.error(UNEXPECTED_EXCEPTION % error)
+            return Response(
+                DATA_NOT_FOUND,
+                status=status.HTTP_404_NOT_FOUND,
+            )
         except Exception as error:
             logger.error(UNEXPECTED_EXCEPTION % error)
             return Response(
@@ -158,8 +174,8 @@ class PersonDataDetailView(views.APIView):
         except Exception as error:
             logger.error(UNEXPECTED_EXCEPTION % error)
             return Response(
-                'Data not found!',
-                status=status.HTTP_400_BAD_REQUEST,
+                DATA_NOT_FOUND,
+                status=status.HTTP_404_NOT_FOUND,
             )
 
 
