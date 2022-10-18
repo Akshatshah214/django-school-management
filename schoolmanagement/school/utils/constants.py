@@ -13,3 +13,4 @@ FETCHING_DATA_USING_ID_START = "Fetching data for id: %s!"
 
 # << ERROR MESSAGES >>
 UNEXPECTED_EXCEPTION = "Unexpected exception : %s"
+DATA_NOT_FOUND = "Data not Found!"
